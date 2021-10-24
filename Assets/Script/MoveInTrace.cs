@@ -6,15 +6,15 @@ using UnityEngine;
 public class MoveInTrace
     : MonoBehaviour
 {
-    [Tooltip("轨迹所有者")]
+    [Header("轨迹所有者")]
     public GameObject TraceOwner;
-    [Tooltip("移动对象")]
+    [Header("移动对象")]
     public GameObject Mover;
-    [Tooltip("移动速度")]
+    [Header("移动速度")]
     public float Speed = 10;
-    [Tooltip("是否停止")]
+    [Header("是否停止")]
     public bool IsStop = true;
-    [Tooltip("跟随鼠标")]
+    [Header("跟随鼠标")]
     public bool WithMouse = false;
 
     const float TargetScale = 2;
@@ -42,7 +42,7 @@ public class MoveInTrace
     }
 
     // Start is called before the first frame update
-    void Start()
+    private void Start()
     {
         if (TraceOwner == null || Mover == null || TraceOwner.transform.childCount < 2 || Speed == 0)
         {
@@ -66,13 +66,13 @@ public class MoveInTrace
         Transform next = NextTransform();
         Material material = next.gameObject.GetComponent<MeshRenderer>().material;
         material.color = Color.red;
-        next.localScale = next.localScale * TargetScale;
+        next.localScale *= TargetScale;
         HasInit = true;
         Debug.Log("初始化成功");
     }
 
     // Update is called once per frame
-    void Update()
+    private void Update()
     {
         if (IsStop)
         {
@@ -113,7 +113,7 @@ public class MoveInTrace
             {
                 Material material = next.gameObject.GetComponent<MeshRenderer>().material;
                 material.color = Color.red;
-                next.localScale = next.localScale / TargetScale;
+                next.localScale /= TargetScale;
                 Transform first = next;
                 float length = speed - distance;
                 Transform newNext = NextTransform();

@@ -188,6 +188,7 @@ public class MoveableTrailRenderer : MonoBehaviour
     public bool Enable = true;
     [Header("是否暂停，暂停状态下尾巴会脱离头部，取消暂停会瞬间追上头部（相当于头部瞬间到达当前位置）")]
     public bool Pause = false;
+    public float Noise = 0;
     [Header("初始化执行时直接生成在原地放置预制时间后的结果"),Range(0, int.MaxValue)]
     public float PrewarmTime = 0;
     [Header("最大长度"), Range(0, int.MaxValue)]
@@ -200,7 +201,11 @@ public class MoveableTrailRenderer : MonoBehaviour
     public float NodeAngleInterval = 15;
     [Header("节点寿命，超过寿命的节点将会无条件移除。"), Range(0, int.MaxValue)]
     public float NodeLife = 0;
-
+    //控制扰动
+    [Header("振幅")]
+    public float Amplitude = 1.0f;
+    [Header("频率")]
+    public float Frequency = 1f;
     #endregion 字段
 
     #region 事件
@@ -406,11 +411,27 @@ public class MoveableTrailRenderer : MonoBehaviour
     }
 
     /// <summary>
+    /// 位置噪声
+    /// </summary>
+    /// <param name="point">位置点</param>
+    /// <returns>处理后坐标</returns>
+    private Vector3 NoisePosition(Point point)
+    {
+        var sTime = Time.timeSinceLevelLoad * Frequency;
+        Vector3 pointPosition = point.Position;
+        float xCoord = pointPosition.x * Amplitude + sTime;
+        float yCoord = pointPosition.y * Amplitude + sTime;
+        float zCoord = pointPosition.z * Amplitude + sTime;
+        Vector3 noise = new Vector3((Mathf.PerlinNoise(yCoord, zCoord) - 0.5f) * Amplitude, (Mathf.PerlinNoise(xCoord, zCoord) - 0.5f) * Amplitude, (Mathf.PerlinNoise(xCoord, yCoord) - 0.5f) * Amplitude);
+        return pointPosition + noise;
+    }
+
+    /// <summary>
     /// 单帧处理视觉
     /// </summary>
     private void DoFrameVisual()
     {
-        Vector3 [] points = TrailPoints.Select(r => r.Position).ToArray();
+        Vector3 [] points = TrailPoints.Select(r => NoisePosition(r)).ToArray();
         Renderer.positionCount = points.Length;
         Renderer.SetPositions(points);
     }

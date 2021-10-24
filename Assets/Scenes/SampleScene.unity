@@ -1433,7 +1433,6 @@ GameObject:
   - component: {fileID: 963194228}
   - component: {fileID: 963194227}
   - component: {fileID: 963194226}
-  - component: {fileID: 963194229}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -1506,23 +1505,6 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 40, y: 25, z: 0}
---- !u!114 &963194229
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 963194225}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8d5f0e64cb00fe649abaf30cf0f64576, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  TraceOwner: {fileID: 1254190953}
-  Mover: {fileID: 1772713570}
-  Speed: 10
-  IsStop: 0
-  WithMouse: 0
 --- !u!1 &1037459102
 GameObject:
   m_ObjectHideFlags: 0
@@ -2573,12 +2555,32 @@ MonoBehaviour:
   LineRendererPrefab: {fileID: 6423830320953372132, guid: 8a6dc40ebb617094ca319080e7d9efda, type: 3}
   Enable: 1
   Pause: 0
+  Noise: 0
   PrewarmTime: 0
   MaxLength: 10
   NodeSpeed: 0
   NodeLengthInterval: 1
   NodeAngleInterval: 360
   NodeLife: 0
+  Amplitude: 1
+  Frequency: 1
+--- !u!114 &1772713577
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1772713570}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8d5f0e64cb00fe649abaf30cf0f64576, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  TraceOwner: {fileID: 1254190953}
+  Mover: {fileID: 1772713570}
+  Speed: 10
+  IsStop: 0
+  WithMouse: 0
 --- !u!1001 &7884707329040081289
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2596,7 +2598,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 7884707327556917226, guid: 5fa7edce16ec85247a399b59c3c73b82, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 3
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 7884707327556917226, guid: 5fa7edce16ec85247a399b59c3c73b82, type: 3}
       propertyPath: m_LocalPosition.z
