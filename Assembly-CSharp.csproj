@@ -53,10 +53,9 @@
     <UnityVersion>2020.3.14f1</UnityVersion>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Assets\Script\Point.cs" />
-    <Compile Include="Assets\Script\MoveableLineRenderer.cs" />
-    <Compile Include="Assets\Script\MoveInTrace.cs" />
     <Compile Include="Assets\Script\MoveableTrailRenderer.cs" />
+    <Compile Include="Assets\Script\MoveInTrace.cs" />
+    <Compile Include="Assets\Script\MoveableLineRenderer.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\TextMesh Pro\Shaders\TMPro.cginc" />
