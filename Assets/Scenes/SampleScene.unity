@@ -3400,17 +3400,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _fixedTickRate: 30
+  MinVertexDistance: 0.1
   Tween: 1
-  LifeTime: 1
-  MaxLength: 1
-  Speed: 10
+  LifeTime: 10
+  MaxLength: 10
+  Speed: 1
   Gravity: 0
-  NoiseMode: 1
-  SpeedNoise: 1
+  NoiseMode: 3
+  SpeedNoise: 0
   AmplitudeX: 1
-  AmplitudeY: 1
-  Frequency: 1
-  NoiseScale: 10
+  AmplitudeY: 0
+  Frequency: 0.1
+  NoiseScale: 0
 --- !u!114 &1772713577
 MonoBehaviour:
   m_ObjectHideFlags: 0

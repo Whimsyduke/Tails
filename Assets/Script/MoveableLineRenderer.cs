@@ -8,7 +8,7 @@ using UnityEditor;
 
 namespace Assets.MoveableLineRenderer.Scripts
 {
-    [ExecuteInEditMode]
+	[ExecuteInEditMode]
 	internal sealed class MoveableLineRenderer : MonoBehaviour
 	{
 		//public GameObject LineRendererPrefab;
@@ -56,8 +56,8 @@ namespace Assets.MoveableLineRenderer.Scripts
 		public float AmplitudeY = 0f;
 		[Header("频率")]
 		public float Frequency = 0f;
-		[Header("扰动渐增")]
-		public float NoiseScale = 0;
+		[Header("扰动渐变"), Range(0f, 100f)]
+		public float NoiseScale = 0f;
 
 		//频率关联速度
 
@@ -172,14 +172,14 @@ namespace Assets.MoveableLineRenderer.Scripts
 			}
 			else
 			{
-				Vector3[] curve = MakeSmoothCurve(points.Where(t => t != null && t.Position != null).Select(t => t.Position).ToArray(), Tween);
+				Vector3[] curve = MakeSmoothCurve(points.Where(t => t != null && t.Position != null).Select(t => t.Position), Tween);
 				_lineRenderer.positionCount = curve.Length;
 				//todo
 				_lineRenderer.SetPositions(curve);
-			}		
+			}
 		}
 
-		public static Vector3[] MakeSmoothCurve(Vector3[] arrayToCurve, int smoothness)
+		public static Vector3[] MakeSmoothCurve(IEnumerable<Vector3> arrayToCurve, int smoothness)
 		{
 			List<Vector3> points;
 			List<Vector3> curvedPoints;
@@ -187,7 +187,7 @@ namespace Assets.MoveableLineRenderer.Scripts
 			int curvedLength = 0;
 
 
-			pointsLength = arrayToCurve.Length;
+			pointsLength = arrayToCurve.Count();
 
 			curvedLength = (pointsLength * smoothness) - 1;
 			curvedPoints = new List<Vector3>(curvedLength);
@@ -237,20 +237,20 @@ namespace Assets.MoveableLineRenderer.Scripts
 					}
 				}
 			}
-			if  (fixedTickStep > 0.1)
-				Debug.Log($"{fixedTickStep}, {Time.deltaTime}");
+			//if  (fixedTickStep > 0.1)
+			//	Debug.Log($"{fixedTickStep}, {Time.deltaTime}");
 			points.RemoveRange(keepCount, points.Count - keepCount);
 		}
 
 		private float NoiseScaleRate(int index)
-        {
-			float scale = NoiseScale;
-			if (scale <=2)
-            {
+		{
+			if (NoiseScale <= 0)
+			{
 				return 1;
-            }
-			return Mathf.Log(index, scale);
-        }
+			}
+			return NoiseScale * index / 100;
+			//return NoiseScale * index / (NoiseScale + index);
+		}
 
 		private void ApplyNone()
 		{
@@ -258,7 +258,7 @@ namespace Assets.MoveableLineRenderer.Scripts
 			Vector3 noise = new Vector3(0, -Gravity / 100f, 0);
 			for (int i = points.Count - 1; i >= 1; i--)
 			{
-				points[i].Noise +=  transform.rotation * noise;
+				points[i].Noise += transform.rotation * noise;
 			}
 
 		}
@@ -278,21 +278,16 @@ namespace Assets.MoveableLineRenderer.Scripts
 				Vector3 noise = new Vector3((Mathf.PerlinNoise(yCoord, zCoord) - 0.5f) * AmplitudeX / 10f, (Mathf.PerlinNoise(xCoord, zCoord) - 0.5f) * AmplitudeY / 10f - Gravity / 100f, (Mathf.PerlinNoise(xCoord, yCoord) - 0.5f) * SpeedNoise / 10f);
 				//计算时需要考虑游戏运行帧率。比如30帧对应0.0333f。暴露参数用fixedTickRate 控制。
 				points[i].Noise += transform.rotation * noise;
+				points[i].NoiseScale = NoiseScaleRate(i);
 			}
 		}
 		private void ApplyRandomNoise()
 		{
-			//注意不要扰动到起始点，导致曲线端点位置脱离原点。
-			Vector3 noiseold = new Vector3(0, 0, 0);
-
 			for (int i = points.Count - 1; i >= 1; i--)
 			{
-				Vector3 noise = new Vector3(Random.Range(-AmplitudeX / 100f, AmplitudeX / 100f), Random.Range(-AmplitudeY / 100f, AmplitudeY / 100f) - Gravity / 100f, Random.Range(-SpeedNoise / 100f, SpeedNoise / 100f));
-
-				points[i].Noise += transform.rotation * noise - transform.rotation * noiseold;
-
-				//每次计算下一个点时，需要把上一次计算的 noise 扣除掉，避免 noise 的累加。
-				noiseold = noise;
+				Vector3 noise = new Vector3(Random.Range(-AmplitudeX / 10f, AmplitudeX / 10f), Random.Range(-AmplitudeY / 10f, AmplitudeY / 10f) - Gravity / 100f, Random.Range(-SpeedNoise / 10f, SpeedNoise / 10f));
+				points[i].Noise = transform.rotation * noise;
+				points[i].NoiseScale = NoiseScaleRate(i);
 			}
 		}
 
@@ -301,8 +296,8 @@ namespace Assets.MoveableLineRenderer.Scripts
 			//注意不要扰动到起始点，导致曲线端点位置脱离原点。
 			float OffsetX = 0;
 			float OffsetY = 0;
-			float second = Time.time - Mathf.Floor(Time.time);
-			float strength = Mathf.Sin(second * Frequency  * Mathf.PI * 2);
+			//float second = Time.time - Mathf.Floor(Time.time);
+			float strength = Mathf.Sin(Time.time * Frequency * Mathf.PI * 2);
 			OffsetX += AmplitudeX * strength;
 			OffsetY += AmplitudeY * strength;
 			Vector3 noise = new Vector3(OffsetX / 10f, OffsetY / 10f - Gravity / 100f, 0);
@@ -329,8 +324,9 @@ namespace Assets.MoveableLineRenderer.Scripts
 {
 	internal sealed class Point
 	{
-		public Vector3 Position {
-			get 
+		public Vector3 Position
+		{
+			get
 			{
 				if (Noise != null)
 				{
