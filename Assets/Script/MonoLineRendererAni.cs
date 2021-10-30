@@ -26,10 +26,10 @@ public class MonoLineRendererAni : MonoBehaviour
     private int LineNodeCount = 20;
     [SerializeField, Header("尾部偏移"), Tooltip("在静止无抖动情况下，彩条尾部的位置（0,0,z）代表彩条长度为z。")]
     private Vector3 LineTailOffset;
-    [SerializeField, Header("跟随速度"), Tooltip("不考虑抖动情况下，因头部移动使彩条拉长时，彩条缩回的速度（每秒缩回百分比），每个轴的值小于等于0意味着缩回速度无限大，彩条在此方向上不可拉伸，不可形变；大于等于100意味着不会缩回仅受“最大长度”影响。")]
-    private Vector3 FollowSpeed = new Vector3(3,3,3);
-    //[SerializeField, Header("最大长度"), Tooltip("在静止无抖动情况下，彩条的最大长度，不会短于尾部偏移带来的长度变化。")]
-    //private Vector3 LineMaxLength = Vector3.zero;
+    [SerializeField, Header("跟随速度"), Tooltip("不考虑抖动情况下，因头部移动使彩条拉长时，彩条缩回的速度（每秒缩回比例），值小于等于0意味着缩回速度无限大，彩条不可拉伸，不可形变；大于等于1意味着不会缩回仅受“最大长度”影响。")]
+    private float FllowSpeed = 3;
+    [SerializeField, Header("最大长度"), Tooltip("在静止无抖动情况下，彩条的最大长度，不会短于尾部偏移带来的长度变化。")]
+    private Vector3 LineMaxLength = Vector3.zero;
     [SerializeField]
     private ParticleSystemSimulationSpace simulationSpace = ParticleSystemSimulationSpace.World;
     [SerializeField]
@@ -47,7 +47,6 @@ public class MonoLineRendererAni : MonoBehaviour
     private bool _need_reset = false;
     private bool bWaveOffset = false;
     private bool bPointOffsetRandom = false;
-    private Vector3 noiseVec;
     private Matrix4x4 space;
 
     private float fixedTickStep { get { return _fixedTickRate == 0 ? 0f : 1f / (float)_fixedTickRate; } }
@@ -168,45 +167,7 @@ public class MonoLineRendererAni : MonoBehaviour
 
         Vector3 off = LineTailOffset / (LineNodeCount - 1);
 
-        #region 处理各方向跟随速度
-        Vector3 followSpeed;
-        if (FollowSpeed.x < 0 || FollowSpeed.x > 100)
-        {
-            followSpeed.x = 1;
-        }
-        else
-        {
-            followSpeed.x = deltaTime * FollowSpeed.x / 100;
-            if (followSpeed.x > 1)
-            {
-                followSpeed.x = 1;
-            }
-        }
-        if (FollowSpeed.y < 0 || FollowSpeed.y > 100)
-        {
-            followSpeed.y = 1;
-        }
-        else
-        {
-            followSpeed.y = deltaTime * FollowSpeed.y / 100;
-            if (followSpeed.y > 1)
-            {
-                followSpeed.y = 1;
-            }
-        }
-        if (FollowSpeed.z < 0 || FollowSpeed.z > 100)
-        {
-            followSpeed.z = 1;
-        }
-        else
-        {
-            followSpeed.z = deltaTime * FollowSpeed.z / 100;
-            if (followSpeed.z > 1)
-            {
-                followSpeed.z = 1;
-            }
-        }
-        #endregion 处理各方向跟随速度
+        float followSpeed = deltaTime * FllowSpeed;
 
         for (int i = 0; i < LineNodeCount; i++)
         {
@@ -223,15 +184,11 @@ public class MonoLineRendererAni : MonoBehaviour
                 switch (simulationSpace)
                 {
                     case ParticleSystemSimulationSpace.Local:
-                        positions[i] = Lerp(positions[i], positions[i - 1] + off, followSpeed);
-                        if (bPointOffsetRandom)
-                            positions[i] += noiseVec;
+                        positions[i] = Vector3.Lerp(positions[i], positions[i - 1] + off, followSpeed);
                         break;
 
                     case ParticleSystemSimulationSpace.World:
-                        positions[i] = Lerp(positions[i], positions[i - 1] + space.MultiplyVector(off), followSpeed);
-                        if (bPointOffsetRandom)
-                            positions[i] += space.MultiplyVector(noiseVec);
+                        positions[i] = Vector3.Lerp(positions[i], positions[i - 1] + space.MultiplyVector(off), followSpeed);
                         break;
 
                     case ParticleSystemSimulationSpace.Custom:
@@ -240,9 +197,7 @@ public class MonoLineRendererAni : MonoBehaviour
                             //根据参考transform的移动来运动
                             positions[i] = matCustomSpaceOffset.Value.MultiplyPoint3x4(positions[i]);
                         }
-                        positions[i] = Lerp(positions[i], positions[i - 1] + space.MultiplyVector(off), followSpeed);
-                        if (bPointOffsetRandom)
-                            positions[i] += space.MultiplyVector(noiseVec);
+                        positions[i] = Vector3.Lerp(positions[i], positions[i - 1] + space.MultiplyVector(off), followSpeed);
                         break;
                 }
             }

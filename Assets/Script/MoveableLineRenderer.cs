@@ -8,13 +8,16 @@ using UnityEditor;
 
 namespace Assets.MoveableLineRenderer.Scripts
 {
-	//[ExecuteInEditMode]
+    [ExecuteInEditMode]
 	internal sealed class MoveableLineRenderer : MonoBehaviour
 	{
 		//public GameObject LineRendererPrefab;
 		[Header("默认值 0 更新频率跟Update一致")]
 		[SerializeField]
 		private uint _fixedTickRate = 0;
+		[Header("最小间距"), Range(0.01f, 0.2f)]
+		[SerializeField]
+		private float MinVertexDistance = 0.1f;
 		[Header("顶点插值段数"), Range(1, 10)]
 		[SerializeField]
 		private int Tween = 1;
@@ -30,9 +33,6 @@ namespace Assets.MoveableLineRenderer.Scripts
 		[Header("重力")]
 		[SerializeField]
 		private float Gravity = 0f;
-		[Header("跟随速度")]
-		[SerializeField]
-		private float FollowSpeed = 3f;
 
 
 		private enum NoiseType
@@ -56,7 +56,7 @@ namespace Assets.MoveableLineRenderer.Scripts
 		public float AmplitudeY = 0f;
 		[Header("频率")]
 		public float Frequency = 0f;
-		[Header("扰动渐增百分百"), Tooltip("从0开始，每个节点的扰动影响的增加比例。超过100%后固定为100。")]
+		[Header("扰动渐增")]
 		public float NoiseScale = 0;
 
 		//频率关联速度
@@ -131,16 +131,20 @@ namespace Assets.MoveableLineRenderer.Scripts
 		{
 			RemoveOutdatedPoints();
 
-			points.Insert(0, new Point(transform.position));
+			float FixedMinVertexDistance = MinVertexDistance * fixedTickStep / Time.deltaTime;
+
+			//需要计算尾巴长度
+			if (points.Count < 2 || (points[1].Position - transform.position).sqrMagnitude > FixedMinVertexDistance * FixedMinVertexDistance)
+			{
+				points.Insert(0, new Point(transform.position));
+			}
 
 			float speed = Speed * fixedTickStep;
 
 			// 节点移动
-			points[0].Offset = (-transform.forward) * speed;
 			for (int i = 1; i < points.Count; i++)
 			{
-				points[i].OriginPosition = points[i - 1].FollowPosition;
-				points[i].Offset = (points[i].OriginPosition - points[i - 1].OriginPosition).normalized * speed;
+				points[i].OriginPosition += transform.rotation * (-Vector3.forward) * Speed * fixedTickStep;
 			}
 
 			if (Frequency != 0)
@@ -161,10 +165,53 @@ namespace Assets.MoveableLineRenderer.Scripts
 						break;
 				}
 			}
-			_lineRenderer.positionCount = points.Count;
-			_lineRenderer.SetPositions(points.Where(t => t != null).Select(t => t.Position).ToArray());
+			if (Tween == 1)
+			{
+				_lineRenderer.positionCount = points.Count;
+				_lineRenderer.SetPositions(points.Select(t => t.Position).ToArray());
+			}
+			else
+			{
+				Vector3[] curve = MakeSmoothCurve(points.Where(t => t != null && t.Position != null).Select(t => t.Position).ToArray(), Tween);
+				_lineRenderer.positionCount = curve.Length;
+				//todo
+				_lineRenderer.SetPositions(curve);
+			}		
 		}
 
+		public static Vector3[] MakeSmoothCurve(Vector3[] arrayToCurve, int smoothness)
+		{
+			List<Vector3> points;
+			List<Vector3> curvedPoints;
+			int pointsLength = 0;
+			int curvedLength = 0;
+
+
+			pointsLength = arrayToCurve.Length;
+
+			curvedLength = (pointsLength * smoothness) - 1;
+			curvedPoints = new List<Vector3>(curvedLength);
+
+			float t = 0.0f;
+			for (int pointInTimeOnCurve = 0; pointInTimeOnCurve < curvedLength + 1; pointInTimeOnCurve++)
+			{
+				t = Mathf.InverseLerp(0, curvedLength, pointInTimeOnCurve);
+
+				points = new List<Vector3>(arrayToCurve);
+
+				for (int j = pointsLength - 1; j > 0; j--)
+				{
+					for (int i = 0; i < j; i++)
+					{
+						points[i] = (1 - t) * points[i] + t * points[i + 1];
+					}
+				}
+
+				curvedPoints.Add(points[0]);
+			}
+
+			return (curvedPoints.ToArray());
+		}
 		private void RemoveOutdatedPoints()
 		{
 			if (points.Count == 0)
@@ -182,7 +229,7 @@ namespace Assets.MoveableLineRenderer.Scripts
 				}
 				if (MaxLength > 0 && i > 0)
 				{
-					length = length + Vector3.Distance(points[i - 1].Position, points[i].Position);
+					length = length + Vector3.Distance(points[i - 1].OriginPosition, points[i].OriginPosition);
 					if (length > MaxLength)
 					{
 						keepCount = i;
@@ -195,21 +242,14 @@ namespace Assets.MoveableLineRenderer.Scripts
 			points.RemoveRange(keepCount, points.Count - keepCount);
 		}
 
-		private void NoiseScaleRate(ref float rate)
+		private float NoiseScaleRate(int index)
         {
-			if (NoiseScale > 100 || NoiseScale < 0)
+			float scale = NoiseScale;
+			if (scale <=2)
             {
-				return;
+				return 1;
             }
-			rate = rate + NoiseScale / 100;
-			if (rate > 1)
-            {
-				rate = 1;
-            }
-			if (rate < 0)
-            {
-				rate = 0;
-            }
+			return Mathf.Log(index, scale);
         }
 
 		private void ApplyNone()
@@ -267,18 +307,19 @@ namespace Assets.MoveableLineRenderer.Scripts
 			OffsetY += AmplitudeY * strength;
 			Vector3 noise = new Vector3(OffsetX / 10f, OffsetY / 10f - Gravity / 100f, 0);
 			//计算时需要考虑游戏运行帧率。比如30帧对应0.0333f。暴露参数用fixedTickRate 控制。
-			float noiseScale = 0;
-			NoiseScaleRate(ref noiseScale);
-			points[1].Noise = transform.rotation * noise;
-			points[1].NoiseScale = noiseScale;
-			Vector3 addNoise = points[1].Noise;
-			for (int i = 2; i < points.Count; i++)
+
+			if (points.Count > 1)
 			{
-				Vector3 currentNoise = points[i].Noise;
-				points[i].Noise = addNoise;
-				NoiseScaleRate(ref noiseScale);
-				points[i].NoiseScale = noiseScale;
-				addNoise = currentNoise;
+				points[1].Noise = transform.rotation * noise;
+				points[1].NoiseScale = NoiseScaleRate(1);
+				Vector3 addNoise = points[1].Noise;
+				for (int i = 2; i < points.Count; i++)
+				{
+					Vector3 currentNoise = points[i].Noise;
+					points[i].Noise = addNoise;
+					points[i].NoiseScale = NoiseScaleRate(i);
+					addNoise = currentNoise;
+				}
 			}
 		}
 	}
@@ -301,19 +342,11 @@ namespace Assets.MoveableLineRenderer.Scripts
 				}
 			}
 		}
-		public Vector3 FollowPosition
-        {
-			get
-            {
-				return OriginPosition + Offset;
-            }
-        }
 		private readonly float _timeCreated;
 
 		public Vector3 OriginPosition { get; set; } // 节点移动影响
 		public Vector3 Noise { set; get; } // 节点扰动影响
 		public float NoiseScale { set; get; } // 扰动缩放
-		public Vector3 Offset { set; get; } // 跟随偏移
 
 		public Point(Vector3 position)
 		{
